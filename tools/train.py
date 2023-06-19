@@ -10,6 +10,7 @@ import glob
 import os
 from pathlib import Path
 import math
+import time
 
 import torch
 import torch.nn as nn
@@ -28,7 +29,7 @@ def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
     parser.add_argument('--cfg_file', type=str, default=None, help='specify the config for training')
 
-    parser.add_argument('--batch_size', type=int, default=None, required=False, help='batch size for training')
+    parser.add_argument('--batch_size', type=int, default=None, required=False, help='batch size per gpu for training')
     parser.add_argument('--epochs', type=int, default=None, required=False, help='number of epochs to train for')
     parser.add_argument('--workers', type=int, default=8, help='number of workers for dataloader')
     parser.add_argument('--extra_tag', type=str, default='default', help='extra tag for this experiment')
@@ -123,16 +124,16 @@ def main():
 
     if args.batch_size is None:
         args.batch_size = cfg.OPTIMIZATION.BATCH_SIZE_PER_GPU
-    else:
-        assert args.batch_size % total_gpus == 0, 'Batch size should match the number of gpus'
-        args.batch_size = args.batch_size // total_gpus
+    # else:
+    #     assert args.batch_size % total_gpus == 0, 'Batch size should match the number of gpus'
+    #     args.batch_size = args.batch_size // total_gpus
 
     args.epochs = cfg.OPTIMIZATION.NUM_EPOCHS if args.epochs is None else args.epochs
 
     if args.fix_random_seed:
         common_utils.set_random_seed(666)
 
-    output_dir = cfg.ROOT_DIR / 'output' / cfg.EXP_GROUP_PATH / cfg.TAG / args.extra_tag
+    output_dir = cfg.ROOT_DIR / 'results' / cfg.EXP_GROUP_PATH / cfg.TAG / (time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(time.time())) + '----' + args.extra_tag)
     ckpt_dir = output_dir / 'ckpt'
     output_dir.mkdir(parents=True, exist_ok=True)
     ckpt_dir.mkdir(parents=True, exist_ok=True)

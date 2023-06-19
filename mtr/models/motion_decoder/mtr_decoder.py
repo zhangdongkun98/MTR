@@ -4,6 +4,8 @@
 # All Rights Reserved
 
 
+import os
+from pathlib import Path
 import copy
 import pickle
 import torch
@@ -116,7 +118,7 @@ class MTRDecoder(nn.Module):
         if use_place_holder:
             raise NotImplementedError
         else:
-            intention_points_file = cfg.ROOT_DIR / self.model_cfg.INTENTION_POINTS_FILE
+            intention_points_file = Path(os.path.expanduser('~/dataset/waymo/motion/mtr')) / self.model_cfg.INTENTION_POINTS_FILE
             with open(intention_points_file, 'rb') as f:
                 intention_points_dict = pickle.load(f)
 

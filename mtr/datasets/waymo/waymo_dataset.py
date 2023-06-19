@@ -18,7 +18,7 @@ from mtr.config import cfg
 class WaymoDataset(DatasetTemplate):
     def __init__(self, dataset_cfg, training=True, logger=None):
         super().__init__(dataset_cfg=dataset_cfg, training=training, logger=logger)
-        self.data_root = cfg.ROOT_DIR / self.dataset_cfg.DATA_ROOT
+        self.data_root = Path(os.path.expanduser('~/dataset/waymo/motion/mtr'))
         self.data_path = self.data_root / self.dataset_cfg.SPLIT_DIR[self.mode]
 
         self.infos = self.get_all_infos(self.data_root / self.dataset_cfg.INFO_FILE[self.mode])

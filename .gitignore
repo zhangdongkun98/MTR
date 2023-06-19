@@ -11,3 +11,6 @@ data/
 *.yaml
 *.png
 *.html
+
+mtr/version.py
+results
