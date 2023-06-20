@@ -43,6 +43,7 @@ def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, dist_test=False, sa
         with torch.no_grad():
             batch_pred_dicts = model(batch_dict)
             final_pred_dicts = dataset.generate_prediction_dicts(batch_pred_dicts, output_path=final_output_dir if save_to_file else None)
+            import pdb; pdb.set_trace()
             pred_dicts += final_pred_dicts
 
         disp_dict = {}
