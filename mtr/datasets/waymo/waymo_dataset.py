@@ -110,13 +110,13 @@ class WaymoDataset(DatasetTemplate):
             timestamps=timestamps, obj_types=obj_types, obj_ids=obj_ids
         )
 
-        print(f'index: {index}, {len(track_index_to_predict)}, {len(track_index_to_predict_new)}, {track_index_to_predict}, {track_index_to_predict_new}')
         ret_dict = {
             'index': np.array([index] * len(track_index_to_predict)),
             'scenario_id': np.array([scene_id] * len(track_index_to_predict)),
             'obj_trajs': obj_trajs_data,
             'obj_trajs_mask': obj_trajs_mask,
             'track_index_to_predict': track_index_to_predict_new,  # used to select center-features
+            'sdc_track_index': np.array([sdc_track_index_new] * len(track_index_to_predict)),
             'obj_trajs_pos': obj_trajs_pos,
             'obj_trajs_last_pos': obj_trajs_last_pos,
             'obj_types': obj_types,

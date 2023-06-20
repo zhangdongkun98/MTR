@@ -14,8 +14,10 @@ import time
 from pathlib import Path
 
 import numpy as np
+np.set_printoptions(precision=6, linewidth=65536, suppress=True, threshold=np.inf)
 import torch
 from tensorboardX import SummaryWriter
+import matplotlib.pyplot as plt
 
 from eval_utils import eval_utils
 from mtr.config import cfg, cfg_from_list, cfg_from_yaml_file, log_config_to_file
@@ -62,6 +64,128 @@ def parse_config():
 
 
 
+from interpretable_driving.waymo import split_roadline, calculate_intention
+from interpretable_driving.waymo.vis import RoadLineVis, AgentVis
+
+
+
+class RoadDim(object):
+    valid = 0
+    x = 1
+    y = 2
+    z = 3
+    dx = 4
+    dy = 5
+    dz = 6
+    type = 7
+    # id = 8
+
+
+class AgentDim(object):
+    valid = 0
+    time = 1
+    x = 2
+    y = 3
+    z = 4
+    bbox_yaw = 5
+    length = 6
+    width = 7
+    height = 8
+    speed = 9
+    # vel_yaw = 10
+    vx = 10
+    vy = 11
+
+
+
+
+
+def visualize(axes, data_point):
+    roadline = np.concatenate([
+        np.expand_dims(data_point.map_polylines_mask.astype(np.float32), axis=2),
+        data_point.map_polylines,
+    ], axis=2)
+    roadline = roadline.reshape(-1, roadline.shape[-1])
+
+
+    agents_history = np.concatenate([
+        np.expand_dims(data_point.obj_trajs_mask.astype(np.float32), axis=2),
+        data_point.obj_trajs,
+    ], axis=2)
+    agents_future = np.concatenate([
+        np.expand_dims(data_point.obj_trajs_future_mask.astype(np.float32), axis=2),
+        data_point.obj_trajs_future_state,
+    ], axis=2)
+
+    agents_history = np.concatenate([
+        agents_history[..., [0]],  ### valid
+        agents_history[..., [23]],  ### time
+        agents_history[..., [1,2,3]],  ### x, y, z
+        np.arctan2(agents_history[..., [24]], agents_history[..., [25]]),   ### bbox_yaw
+        agents_history[..., [4,5,6]],  ### length, width, height
+        np.hypot(agents_history[..., [26]], agents_history[..., [27]]),   ### speed
+        agents_history[..., [26,27]],  ### vx, vy
+    ], axis=2)
+
+
+
+    ################################################
+    ################################################
+    ################################################
+    ax = axes[0]
+    ax.set_title(f'{data_point.index.item()} - {data_point.scenario_id}: roadline')
+    RoadLineVis(roadline, RoadDim, verbose=1).visualize(ax, alpha=0.6)
+
+
+    ################################################
+    ################################################
+    ################################################
+    ax = axes[1]
+    ax.set_title(f'{data_point.index.item()}: agents trajectories')
+    RoadLineVis(roadline, RoadDim, verbose=0).visualize(ax, alpha=0.6)
+
+
+
+    for (
+        agent_current,
+        agent_past,
+        agent_future,
+        # agent_to_predict,
+        # agent_of_interest,
+        agent_id,
+        # agent_is_sdc,
+        agent_type,
+    ) in zip(
+        agents_history[:,[-1]],
+        agents_history[:,:-1],
+        agents_future[...,[0,1,2]],
+        # data_point.agents_to_predict,
+        # data_point.agents_of_interest,
+        data_point.obj_ids,
+        # data_point.agents_is_sdc,
+        data_point.obj_types,
+    ):
+        agent_vis = AgentVis(
+            agent_id,
+            agent_type,
+            0, # agent_is_sdc,
+            0, # agent_to_predict,
+            0, # agent_of_interest,
+            agent_current,
+            agent_past,
+            agent_future,
+            AgentDim,
+        )
+        agent_vis.visualize(ax)
+
+
+    # import pdb; pdb.set_trace()
+
+
+    return
+
+
+
 def main():
     args, cfg = parse_config()
     if args.launcher == 'none':
@@ -81,24 +205,10 @@ def main():
     #     assert args.batch_size % total_gpus == 0, 'Batch size should match the number of gpus'
     #     args.batch_size = args.batch_size // total_gpus
           
-    output_dir = cfg.ROOT_DIR / 'output' / cfg.EXP_GROUP_PATH / cfg.TAG / args.extra_tag
+    output_dir = cfg.ROOT_DIR / 'results' / 'vis'
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    eval_output_dir = output_dir / 'eval'
-
-    if not args.eval_all:
-        num_list = re.findall(r'\d+', args.ckpt) if args.ckpt is not None else []
-        epoch_id = num_list[-1] if num_list.__len__() > 0 else 'no_number'
-        eval_output_dir = eval_output_dir / ('epoch_%s' % epoch_id)
-    else:
-        epoch_id = None
-        eval_output_dir = eval_output_dir / 'eval_all_default'
-
-    if args.eval_tag is not None:
-        eval_output_dir = eval_output_dir / args.eval_tag
-
-    eval_output_dir.mkdir(parents=True, exist_ok=True)
-    log_file = eval_output_dir / ('log_eval_%s.txt' % datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    log_file = output_dir / ('log_eval_%s.txt' % datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = common_utils.create_logger(log_file, rank=cfg.LOCAL_RANK)
 
     # log to file
@@ -115,15 +225,49 @@ def main():
     if args.fix_random_seed:
         common_utils.set_random_seed(666)
 
-    test_set, test_loader, sampler = build_dataloader(
+    dataset, test_loader, sampler = build_dataloader(
         dataset_cfg=cfg.DATA_CONFIG,
         batch_size=args.batch_size,
         dist=dist_test, workers=args.workers, logger=logger, training=False
     )
 
-    for data_dict in test_set:
+    # for i, batch_dict in enumerate(test_loader):
+    #     data = rldev.Data(**batch_dict['input_dict'])
+    #     import pdb; pdb.set_trace()
+        
+
+    for data_dict in dataset:
         data = rldev.Data(**data_dict)
-        import pdb; pdb.set_trace()
+        data.obj_types = np.expand_dims(data.obj_types, axis=0).repeat(data.index.shape[0], axis=0)
+        data.obj_ids = np.expand_dims(data.obj_ids, axis=0).repeat(data.index.shape[0], axis=0)
+
+        print()
+        print(f'data shape: {data.shape}')
+        print()
+
+
+        ################################################
+        ### vis ########################################
+        ################################################
+        num_rows = data.index.shape[0]
+        num_columns = 3
+        fig, axes = plt.subplots(num_rows, num_columns, dpi=100)
+        for ax in axes.flatten():
+            ax.set_aspect('equal')
+
+        for i in range(data.index.shape[0]):
+            data_point = data[i:i+1].squeeze(0)
+            visualize(axes[i], data_point)
+        
+        
+        fig.set_tight_layout(True)
+
+        w = (num_columns + (num_columns-1)*fig.subplotpars.wspace) * max([a.get_position().width for a in axes.flatten()])
+        h = (num_rows + (num_rows-1)*fig.subplotpars.hspace) * max([a.get_position().height for a in axes.flatten()])
+        fig.set_size_inches(w  *50, h  *50)
+
+        plt.show()
+        
 
 
 if __name__ == '__main__':
