@@ -249,15 +249,13 @@ def main():
         ################################################
         ### vis ########################################
         ################################################
-        num_rows = data.index.shape[0]
-        num_columns = 3
+        num_rows = 1
+        num_columns = 2
         fig, axes = plt.subplots(num_rows, num_columns, dpi=100)
         for ax in axes.flatten():
             ax.set_aspect('equal')
 
-        for i in range(data.index.shape[0]):
-            data_point = data[i:i+1].squeeze(0)
-            visualize(axes[i], data_point)
+        visualize(axes, data[0:1].squeeze(0))
         
         
         fig.set_tight_layout(True)
