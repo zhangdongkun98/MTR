@@ -141,7 +141,7 @@ def visualize(axes, data_point):
     ################################################
     ################################################
     ax = axes[1]
-    ax.set_title(f'{data_point.index.item()}: agents trajectories')
+    ax.set_title(f'{data_point.index.item()} - track index ({data_point.track_index_to_predict.item()}): agents trajectories')
     RoadLineVis(roadline, RoadDim, verbose=0).visualize(ax, alpha=0.6)
 
 

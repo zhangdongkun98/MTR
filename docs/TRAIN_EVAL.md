@@ -3,6 +3,8 @@ For example, train with 8 GPUs:
 ```
 cd tools
 
+python train.py --cfg_file cfgs/waymo/mtr+100_percent_data.yaml --batch_size 8 --epochs 30 --extra_tag look
+
 bash scripts/torchrun_train.sh 8
 ```
 Actually, during the training process, the evaluation results will be logged to the log file under `output/waymo/mtr+100_percent_data/my_first_exp/log_train_xxxx.txt`
